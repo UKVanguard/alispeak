@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DrawPane</title>
+</head>
+<style>
+</style>
+<body onload = "ima();">
+<input type = 'text' id="tex" onchange = 'image(v)' oninput="image(v)">
+<div class="menu">
+    <div>板</div>
+    <button type="button" id="reset">重置</button>
+    <button type="button" id="save">保存</button>
+    <button type="button" id="long">框拉长一点</button>
+    <button type="button" id="short">框缩短一点</button>
+</div>
+<!--<div class="window">-->
+<!--    <div class="top">-->
+<!--        <div class="button"></div>-->
+<!--        <div class="button"></div>-->
+<!--        <div class="button"></div>-->
+<!--    </div>-->
+    <canvas id="canvas" width="1500px" height="229px"></canvas>
+    <script src="DrawLine.js"></script>
+<!--</div>-->
+</body>
+</html>
