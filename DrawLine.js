@@ -3,17 +3,27 @@ const ctx = canvas.getContext("2d");
 let img = new Image();
 let age = new Image();
 let mid = new Image();
+let text = document.getElementById('tex');
+let rangeV = document.getElementById('range');
+let saveimg = document.getElementById('save');
+let resetimg = document.getElementById('reset');
 ctx.font = "43px SimHei"
 ctx.fillStyle="#fdfeff"
 ctx.fillStyle="#ffffff"
 let v = 0
+let V = 1
 
-reset.onclick = function(){
+
+resetimg.onclick = function (){
     ctx.fillStyle = "#ffffff";                    //清空画板的
     ctx.fillRect(0,0,canvas.width,canvas.height);
     document.getElementById("tex").value = null        //去掉文字的
-    imag()
+    ima();
+    v = 0
+    rangeV.value = 50
+    num.value = 50
 }
+
 
 function ima(){     //初始化图片
 img.onload = () => {
@@ -30,27 +40,26 @@ age.onload = () => {
     age.src = '盒1.jpg';
 }
 
-function  imag() {       //tex.onchange更新画布1
-    let l = document.getElementById("tex").value.toString().length*30
+
+function draw(V){
+    let l = document.getElementById("tex").value.toString().length*30;
+    let i = (l+v)*V
     ctx.fillRect(0,0,5000,229)
     ctx.drawImage(img, 0, 0);
-    ctx.drawImage(mid,318, 0,l,229)
-    ctx.drawImage(age,317+l,0)
+    ctx.drawImage(mid,318, 0,i,229)
+    ctx.drawImage(age,317+i,0)
     ctx.fillText(document.getElementById("tex").value,250,157)
 }
 
-function image(v) {
-    let l = document.getElementById("tex").value.toString().length*30
-    let ll = l+v
-    ctx.fillRect(0,0,5000,229)
-    ctx.drawImage(img, 0, 0);
-    ctx.drawImage(mid,318, 0,ll,229)
-    ctx.drawImage(age,317+ll,0)
-    ctx.fillText(document.getElementById("tex").value,250,157)
+text.addEventListener('change',function (){
+    draw(V);
+});
+text.addEventListener('input',function (){
+    draw(V);
+});
 
-}
 
-save.onclick = function save() {
+saveimg.onclick = function save() {
     const newCanvas = document.createElement('canvas');
     const Ctx = newCanvas.getContext('2d');
     let l = document.getElementById("tex").value.toString().length*30
@@ -59,23 +68,53 @@ save.onclick = function save() {
     newCanvas.height =229;
     Ctx.drawImage(canvas, 0, 0, 460+ll, 229,0,0,456+ll,229);
 
-    const url = newCanvas.toDataURL("image/jpg");
+    const url = newCanvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = "ailis";
+    a.download = document.getElementById("tex").value;
     a.target = "_blank"
     a.click();
 }
 
+const long = document.getElementById("long")
+const short = document.getElementById("short")
+
 long.onclick = function (){
     v = v+12
-    image(v)
+    draw(V)
 }
+
 
 short.onclick = function (){
     v = v-12
-    image(v)
+    draw(V)
 }
+
+rangeV.addEventListener('change',function (){
+    num.value = this.value
+    V = 1+((this.value-50)/100)
+    draw(V);
+});
+rangeV.addEventListener('input',function (){
+    num.value = this.value
+    V = 1+((this.value-50)/100)
+    draw(V);
+})
+
+let num = document.getElementById('rangenum')
+
+num.addEventListener("change",function (){
+    rangeV.value = this.value
+    console.log(this.value)
+    V = 1+(this.value-50)/100
+    draw(V);
+})
+num.addEventListener('input',function (){
+    rangeV.value = this.value
+    console.log(this.value)
+    V = 1+(this.value-50)/100
+    draw(V);
+})
 
 
 // let painting = false;
