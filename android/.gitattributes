@@ -1,0 +1,4 @@
+# core.autocrlf=true 的环境下，shell 脚本被检出成 CRLF 会让 bash 报
+# "set: -: invalid option" 之类的错，这里强制这两类文件用 LF。
+*.sh text eol=lf
+*.py text eol=lf
