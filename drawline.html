@@ -2,12 +2,19 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#fdfde5">
     <title>DrawPane</title>
 </head>
 <style>
+    [hidden] {
+        display: none !important;
+    }
+
     body {
         margin: 12px;
         font-family: system-ui, "Microsoft YaHei", sans-serif;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .phrases {
@@ -28,16 +35,21 @@
     }
 
     .phrase-input {
-        width: 320px;
-        padding: 4px 6px;
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 320px;
+        padding: 6px;
+        font-size: 16px;   /* 低于 16px 时 iOS 会在聚焦时自动放大 */
     }
 
     .remove-row {
-        width: 24px;
-        height: 24px;
+        flex: 0 0 auto;
+        width: 30px;
+        height: 30px;
         line-height: 1;
         padding: 0;
         color: #6b7280;
+        font-size: 16px;
         cursor: pointer;
     }
 
@@ -46,29 +58,39 @@
     }
 
     .menu {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
         margin: 8px 0;
     }
 
     .menu button {
-        margin-right: 6px;
-        padding: 4px 10px;
+        padding: 6px 12px;
+        font-size: 14px;
         cursor: pointer;
     }
 
     .length-control {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
         margin: 8px 0;
     }
 
-    .length-control label {
-        margin-right: 6px;
+    .length-control #range {
+        flex: 1 1 140px;
+        min-width: 100px;
+        max-width: 320px;
     }
 
     #rangenum {
         width: 60px;
+        padding: 4px;
+        font-size: 16px;
     }
 
     .status {
-        margin-left: 8px;
         color: #4b5563;
         font-size: 13px;
     }
@@ -79,6 +101,33 @@
         margin-top: 10px;
         border: 1px solid #e5e7eb;
     }
+
+    /* 手机竖屏：按钮做大到适合手指点按，留白收紧 */
+    @media (max-width: 600px) {
+        body {
+            margin: 10px;
+        }
+
+        .phrase-input {
+            max-width: none;
+        }
+
+        .menu button {
+            flex: 1 1 auto;
+            min-height: 42px;
+            padding: 10px 12px;
+            font-size: 15px;
+        }
+
+        .length-control #range {
+            flex-basis: 100%;
+            max-width: none;
+        }
+
+        .status {
+            flex-basis: 100%;
+        }
+    }
 </style>
 <body>
 <div class="phrases" id="inputs"></div>
@@ -87,6 +136,7 @@
     <button type="button" id="reset">重置</button>
     <button type="button" id="save">保存</button>
     <button type="button" id="copy">复制图片</button>
+    <button type="button" id="share" hidden>分享</button>
     <button type="button" id="long">框拉长一点</button>
     <button type="button" id="short">框缩短一点</button>
 </div>

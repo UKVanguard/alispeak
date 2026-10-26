@@ -22,7 +22,10 @@
  * -------------------------------------------------------------------------- */
 const CANVAS_BACKGROUND = '#fdfde5';   // 素材底色（淡黄）
 const TEXT_COLOR = '#ffffff';
-const TEXT_FONT = '43px SimHei';
+// 桌面端用 SimHei；安卓没有这个字体，会依次回退到系统黑体。
+// 气泡宽度由 measureText 实测，换字体只会改变字形，不会撑破版面。
+const TEXT_FONT_FAMILY = "'SimHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif";
+const TEXT_FONT = '43px ' + TEXT_FONT_FAMILY;
 const TEXT_LEFT = 250;                 // 文字左边界
 const TEXT_BASELINE_OFFSET = 60;       // 首行基线相对气泡顶部的偏移
 const LINE_HEIGHT = 58;                // 折行后的行距
@@ -33,6 +36,7 @@ const BUBBLE_FIRST_TOP = 97;           // 首个气泡顶部
 const BUBBLE_MIN_RIGHT = 342;          // 最小右边界：保证「爱丽丝」名字不被裁掉
 const BUBBLE_GAP = 24;                 // 相邻气泡的垂直间距
 const BOTTOM_MARGIN = 41;              // 最后一个气泡下方留白
+const RIGHT_MARGIN = 41;               // 气泡右缘到画布右缘的留白，和底部留白对齐
 
 const RIGHT_PADDING = 48;              // 文字右缘到气泡右缘的留白
 const MIN_RIGHT_PADDING = 12;          // 手动缩短时的最小留白，防止压字
@@ -69,6 +73,7 @@ const addButton = document.getElementById('add');
 const resetButton = document.getElementById('reset');
 const saveButton = document.getElementById('save');
 const copyButton = document.getElementById('copy');
+const shareButton = document.getElementById('share');
 const lengthenButton = document.getElementById('long');
 const shortenButton = document.getElementById('short');
 const lengthSlider = document.getElementById('range');
@@ -259,7 +264,8 @@ function computeLayout() {
   const contentRight = blocks.reduce(function (widest, block) {
     return Math.max(widest, block.right);
   }, 0);
-  const width = Math.max(contentRight, NAME_CROP.x + NAME_CROP.width);
+  // 画布比气泡多留一条右边距，否则气泡圆角直接切在画布边缘上，看着像被裁掉了
+  const width = Math.max(contentRight + RIGHT_MARGIN, NAME_CROP.x + NAME_CROP.width);
   const lastBlock = blocks[blocks.length - 1];
   const height = lastBlock.top + lastBlock.height + BOTTOM_MARGIN;
 
@@ -391,6 +397,27 @@ function downloadCanvas(blobOrUrl, fileName) {
   downloadLink.click();
 }
 
+/**
+ * 安卓壳通过 addJavascriptInterface 注入的原生桥。
+ * 浏览器里没有它，所有逻辑会自动走原来的 Web 实现。
+ */
+function getNativeBridge() {
+  return (typeof window.NativeBridge !== 'undefined' && window.NativeBridge) ? window.NativeBridge : null;
+}
+
+/** 调原生方法，返回空字符串表示成功，否则是给用户看的失败原因。 */
+function callBridge(bridge, method, dataUrl) {
+  if (!bridge || typeof bridge[method] !== 'function') {
+    return '当前环境不支持该操作';
+  }
+  try {
+    return bridge[method](dataUrl) || '';
+  } catch (error) {
+    console.warn('原生调用失败：', error);
+    return String(error && error.message ? error.message : error);
+  }
+}
+
 /** 画板转 PNG Blob；file:// 打开时画布被污染，转成可读提示。 */
 function canvasToPngBlob() {
   return new Promise(function (resolve, reject) {
@@ -409,6 +436,12 @@ function canvasToPngBlob() {
 }
 
 function saveImage() {
+  const bridge = getNativeBridge();
+  if (bridge) {
+    const failure = callBridge(bridge, 'savePng', canvas.toDataURL('image/png'));
+    showStatus(failure ? '保存失败：' + failure : '已保存到相册');
+    return;
+  }
   try {
     downloadCanvas(canvas.toDataURL('image/png'), buildFileName());
     showStatus('已保存图片');
@@ -418,8 +451,27 @@ function saveImage() {
   }
 }
 
-/** 写入系统剪贴板；页面失焦时部分浏览器会挂起，用超时兜底。 */
+/** 分享：只有安卓壳里才有，浏览器不显示这个按钮。 */
+function shareImage() {
+  const bridge = getNativeBridge();
+  if (!bridge) {
+    return;
+  }
+  const failure = callBridge(bridge, 'sharePng', canvas.toDataURL('image/png'));
+  showStatus(failure ? '分享失败：' + failure : '');
+}
+
+/** 写入系统剪贴板；安卓走原生桥，浏览器走 Clipboard API。 */
 async function copyImage() {
+  const bridge = getNativeBridge();
+  if (bridge) {
+    const failure = callBridge(bridge, 'copyPng', canvas.toDataURL('image/png'));
+    if (failure) {
+      throw new Error(failure);
+    }
+    return;
+  }
+
   if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
     throw new Error('当前浏览器不支持向剪贴板写入图片');
   }
@@ -615,6 +667,10 @@ function bindEvents() {
 
   saveButton.addEventListener('click', saveImage);
 
+  if (shareButton) {
+    shareButton.addEventListener('click', shareImage);
+  }
+
   copyButton.addEventListener('click', async function () {
     try {
       await copyImage();
@@ -635,29 +691,80 @@ function bindEvents() {
 /* --------------------------------------------------------------------------
  * 十三、素材加载与启动
  * -------------------------------------------------------------------------- */
+/**
+ * 按候选文件名依次尝试加载。
+ * 网页里素材是中文名；打进 APK 时 aapt2 处理不了中文文件名，
+ * 构建脚本会改名成 left/body/cap.jpg，这里自动回退，两边共用同一份代码。
+ */
+function loadFirstAvailable(image, candidates) {
+  return new Promise(function (resolve) {
+    let index = 0;
+
+    function tryNext() {
+      if (index >= candidates.length) {
+        console.error('素材加载失败：' + candidates.join(' / '));
+        resolve();
+        return;
+      }
+      const path = candidates[index];
+      index += 1;
+
+      image.onload = function () {
+        // decode() 保证首帧绘制用的是完整解码后的图，避免画到半张
+        if (typeof image.decode === 'function') {
+          image.decode().catch(function () { /* 解码失败也继续 */ }).then(resolve);
+        } else {
+          resolve();
+        }
+      };
+      image.onerror = tryNext;
+      image.src = path;
+    }
+
+    tryNext();
+  });
+}
+
 async function loadSourceImages() {
   const sources = [
-    { image: leftPanelImage, path: '我.jpg' },
-    { image: bubbleBodyImage, path: '超.jpg' },
-    { image: bubbleCapImage, path: '盒1.jpg' }
+    { image: leftPanelImage, candidates: ['我.jpg', 'left.jpg'] },
+    { image: bubbleBodyImage, candidates: ['超.jpg', 'body.jpg'] },
+    { image: bubbleCapImage, candidates: ['盒1.jpg', 'cap.jpg'] }
   ];
-  const jobs = sources.map(function (source) {
-    source.image.src = source.path;
-    // decode() 保证首帧绘制用的是完整解码后的图，避免画到半张
-    return typeof source.image.decode === 'function'
-      ? source.image.decode().catch(function () { return undefined; })
-      : new Promise(function (resolve) {
-          source.image.addEventListener('load', resolve);
-          source.image.addEventListener('error', resolve);
-        });
-  });
-  await Promise.all(jobs);
+  await Promise.all(sources.map(function (source) {
+    return loadFirstAvailable(source.image, source.candidates);
+  }));
+}
+
+/** 「分享」只在安卓壳里出现，浏览器没有原生分享就不显示这个按钮。 */
+function revealNativeOnlyControls() {
+  const bridge = getNativeBridge();
+  if (shareButton && bridge && typeof bridge.sharePng === 'function') {
+    shareButton.hidden = false;
+  }
+}
+
+/**
+ * 等字体就绪再画第一帧。
+ * 否则 measureText 会先用回退字体的度量，等真字体加载完文字换行、气泡宽度就对不上了。
+ */
+async function ensureFontReady() {
+  if (!document.fonts || typeof document.fonts.load !== 'function') {
+    return;
+  }
+  try {
+    await document.fonts.load(TEXT_FONT);
+  } catch (error) {
+    console.warn('字体预加载失败：', error);
+  }
 }
 
 async function init() {
   createRow('');
   setActiveRow(0);
   bindEvents();
+  revealNativeOnlyControls();
+  await ensureFontReady();
   renderCanvas();
   await loadSourceImages();
   renderCanvas();
