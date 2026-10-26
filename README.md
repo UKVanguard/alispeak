@@ -37,3 +37,14 @@ npx serve -l 8765
 - **长度微调**滑条：同样作用于当前选中的那一句，以自动长度为中心整体缩放（50 为 1 倍，范围 0～100 对应 0.5～1.5 倍），拉条和数字框双向同步。
 
 哪一句是「当前选中」的？就是你最后点过的那一行，左侧会有一条深色竖线作为标记，滑条旁边也会显示「（第 N 句）」。这样多气泡的时候可以单独把某一句拉长一点。
+
+## Android 版
+
+`android/` 里是一个 WebView 壳，把同一份网页打成可以装进手机的 APK：页面走 `https://appassets.androidplatform.net` 假域名从 assets 读出来（这样画布不算 tainted，导出照常），复制、保存、分享换成系统能力——剪贴板写入自家 ContentProvider 的 URI、MediaStore 存进相册、`ACTION_SEND` 调起分享面板，全程不需要存储权限。
+
+```bash
+cd android
+./build.sh        # 需要 build-tools/30.0.3 与 platforms/android-30，产物 android/alispeak.apk
+```
+
+网页侧不需要分开维护：`DrawLine.js` 检测到 `window.NativeBridge` 就走原生，没有就退回浏览器原本的行为。细节和踩过的坑见 [android/README.md](android/README.md)。

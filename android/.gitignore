@@ -1,0 +1,10 @@
+# 构建产物
+build/
+alispeak.apk
+alispeak.apk.idsig
+
+# 自动生成的签名文件（首次 build.sh 时会重新生成）
+debug.keystore
+
+# 由 build.sh 从仓库根目录同步过来的网页资源，不重复入库
+app/src/main/assets/app/
