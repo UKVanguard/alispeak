@@ -1,30 +1,102 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <title>DrawPane</title>
 </head>
 <style>
+    body {
+        margin: 12px;
+        font-family: system-ui, "Microsoft YaHei", sans-serif;
+    }
+
+    .phrases {
+        margin: 4px 0 0;
+    }
+
+    .phrase-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+        padding-left: 4px;
+        border-left: 3px solid transparent;
+    }
+
+    .phrase-row.is-active {
+        border-left-color: #4b5a6d;
+    }
+
+    .phrase-input {
+        width: 320px;
+        padding: 4px 6px;
+    }
+
+    .remove-row {
+        width: 24px;
+        height: 24px;
+        line-height: 1;
+        padding: 0;
+        color: #6b7280;
+        cursor: pointer;
+    }
+
+    .remove-row:hover {
+        color: #b91c1c;
+    }
+
+    .menu {
+        margin: 8px 0;
+    }
+
+    .menu button {
+        margin-right: 6px;
+        padding: 4px 10px;
+        cursor: pointer;
+    }
+
+    .length-control {
+        margin: 8px 0;
+    }
+
+    .length-control label {
+        margin-right: 6px;
+    }
+
+    #rangenum {
+        width: 60px;
+    }
+
+    .status {
+        margin-left: 8px;
+        color: #4b5563;
+        font-size: 13px;
+    }
+
+    #canvas {
+        display: block;
+        max-width: 100%;
+        margin-top: 10px;
+        border: 1px solid #e5e7eb;
+    }
 </style>
-<body onload = "ima();">
-<input type = 'text' id="tex" >
+<body>
+<div class="phrases" id="inputs"></div>
 <div class="menu">
-    <div>板</div>
+    <button type="button" id="add">+ 加一句</button>
     <button type="button" id="reset">重置</button>
     <button type="button" id="save">保存</button>
+    <button type="button" id="copy">复制图片</button>
     <button type="button" id="long">框拉长一点</button>
     <button type="button" id="short">框缩短一点</button>
 </div>
-<!--<div class="window">-->
-<!--    <div class="top">-->
-<!--        <div class="button"></div>-->
-<!--        <div class="button"></div>-->
-<!--        <div class="button"></div>-->
-<!--    </div>-->
-    <canvas id="canvas" width="1500px" height="229px"></canvas>
-    <input type="range" id="range" value="50" min="0" max="100" step="1" >
-    <input type="number" id="rangenum" value="50">
-    <script src="DrawLine.js"></script>
-<!--</div>-->
+<div class="length-control">
+    <label for="range">长度微调<span id="active-hint">（第 1 句）</span></label>
+    <input type="range" id="range" value="50" min="0" max="100" step="1">
+    <input type="number" id="rangenum" value="50" min="0" max="100" step="1">
+    <span class="status" id="status"></span>
+</div>
+<canvas id="canvas" width="342" height="229"></canvas>
+<script src="DrawLine.js"></script>
 </body>
 </html>
