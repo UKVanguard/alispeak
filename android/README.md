@@ -87,6 +87,12 @@ window.NativeBridge.sharePng(dataURL)
 4. **WebView 的字体和桌面不一样。** 桌面用 SimHei，手机上会回退到系统黑体
    （Noto Sans CJK），同一个 43px 的度量略有差异，气泡宽度是按 `measureText`
    实时算的，所以只会跟着变，不会溢出。
+5. **自建 ContentProvider 只实现 `openFile` 是不够的，还得实现 `query`。**
+   QQ 拿到 `content://` 地址后会先查 `OpenableColumns.DISPLAY_NAME` 和
+   `SIZE` 来封装图片消息，`query()` 返回 `null` 它就只发一条空消息；
+   微信是直接 `openInputStream` 读流，所以同一份代码微信正常、QQ 空白。
+   另外 `ClipData` 用 `newUri` 而不是 `newRawUri`，让 clip 自身也带 MIME，
+   有些接收方只认 clip 不认 intent 的 type。
 
 ## 换素材 / 换名字
 

@@ -33,7 +33,6 @@ import java.util.Locale;
 public class NativeBridge {
 
     private static final String CLIP_LABEL = "alispeak";
-    private static final String SHARE_FILE_NAME = "alispeak-share.png";
 
     private final Context context;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -116,8 +115,9 @@ public class NativeBridge {
                 Intent send = new Intent(Intent.ACTION_SEND);
                 send.setType("image/png");
                 send.putExtra(Intent.EXTRA_STREAM, uri);
-                // 部分 ROM 只认 ClipData 上的授权，光加 flag 会读不到
-                send.setClipData(ClipData.newRawUri("alispeak", uri));
+                // 部分 ROM / 接收方只认 ClipData 上的授权，而且 clip 自己也要带
+                // MIME，所以用 newUri（会问 provider 要类型）而不是 newRawUri
+                send.setClipData(ClipData.newUri(context.getContentResolver(), "alispeak", uri));
                 send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                 Intent chooser = Intent.createChooser(send, "分享表情包");
@@ -141,13 +141,19 @@ public class NativeBridge {
         return Base64.decode(base64, Base64.DEFAULT);
     }
 
-    /** 写到 cache/share/，返回 provider 地址；每次都覆盖同一文件名。 */
+    /**
+     * 写到 cache/share/，返回 provider 地址。
+     * 每次用不重名的文件：接收方（QQ 之类）可能过一会儿才去读，
+     * 复用一个固定文件名的话，连着分享两张图会读到后一张。
+     */
     private Uri writeToCache(byte[] bytes) throws IOException {
         File dir = new File(context.getCacheDir(), "share");
         if (!dir.exists() && !dir.mkdirs()) {
             throw new IOException("无法创建缓存目录");
         }
-        File file = new File(dir, SHARE_FILE_NAME);
+        String name = "alispeak-" + new SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US)
+                .format(new Date()) + ".png";
+        File file = new File(dir, name);
         FileOutputStream out = new FileOutputStream(file);
         try {
             out.write(bytes);
@@ -155,7 +161,24 @@ public class NativeBridge {
         } finally {
             out.close();
         }
-        return Uri.parse("content://" + context.getPackageName() + ".files/share/" + SHARE_FILE_NAME);
+        pruneOldShares(dir);
+        return Uri.parse("content://" + context.getPackageName() + ".files/share/" + name);
+    }
+
+    /** 清掉一天前的分享缓存，避免 cache 越堆越多。 */
+    private static void pruneOldShares(File dir) {
+        File[] files = dir.listFiles();
+        if (files == null) {
+            return;
+        }
+        long deadline = System.currentTimeMillis() - 24L * 60 * 60 * 1000;
+        for (File file : files) {
+            if (file.isFile() && file.lastModified() < deadline) {
+                // 删不掉也无所谓，下次再试
+                //noinspection ResultOfMethodCallIgnored
+                file.delete();
+            }
+        }
     }
 
     private static String buildFileName() {
